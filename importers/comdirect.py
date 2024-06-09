@@ -13,7 +13,10 @@ class InvalidFormatError(Exception):
     Raised in case the CSV file format isn't as expected.
     """
 
-class NoValidEndDateError(Exception)
+class NoValidEndDateError(Exception):
+    """
+    Raised in case the CSV file format isn't as expected.
+    """
 
 class ComdirectImporter(ImporterProtocol):
     def __init__(self, account, iban, currency='EUR'):
@@ -72,10 +75,6 @@ class ComdirectImporter(ImporterProtocol):
     def extract_end_date(self, line, filename):
         try:
             _, value, _ = line.split(';')
-        except ValueError:
-            raise InvalidFormatError(f'Invalid metadata: {line}')
-        else:
-                
             value = value.strip('"')
             if value.startswith("Zeitraum:"):
                 # the end date is a timestamp that is coded into the name of the csv file
@@ -84,15 +83,21 @@ class ComdirectImporter(ImporterProtocol):
                 # Extracting the filename
                 filename = path.name
 
-                try:
-                    _, _,date_str = filename.split('_')
-                    date_str, _ = date_str.split('-')
-                    date_object = datetime.strptime(date_str, "%Y%m%d")
-                    return date_object
-                except ValueError:
-                    raise InvalidFormatError(f'Invalid metadata: {line}')
-            
-
-            
-        raise NoValidEndDateError(f'No valid end date could be extracted')
+                
+                _, _,date_str = filename.split('_')
+                date_str, time_str = date_str.split('-')
+                time_str, _ = time_str.split('.')
+                
+                year = int(date_str[:4])
+                month = int(date_str[4:6])
+                day = int(date_str[6:])                
+                hour = int(time_str[:2])
+                minute = int(time_str[2:])
+                date_object = datetime(year, month, day, hour, minute)
+                
+                return date_object
+                
+        except ValueError:
+            raise InvalidFormatError(f'Invalid metadata: {line}')
+        
         
