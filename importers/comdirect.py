@@ -1,7 +1,8 @@
 from beancount.ingest.importer import ImporterProtocol
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from pathlib import Path
+import re
 
 class NoNewBalanceException(Exception):
     """
@@ -52,7 +53,8 @@ class ComdirectImporter(ImporterProtocol):
             line = fd.readline().strip()
             line_index += 1
             
-            self.date_end = self.extract_end_date(line, file.name)
+            
+            self.date_start, self.date_end = self.extract_end_date(line, file.name)
 
             # metadate: new balance
             line_index += 1
@@ -74,19 +76,37 @@ class ComdirectImporter(ImporterProtocol):
 
     def extract_end_date(self, line, filename):
         try:
+            
+             # Extracting the date and timestamp of file upon creation by filename
+            path = Path(filename)
+            filename = path.name                      
+            _, _,date_str = filename.split('_')
+            date_str, time_str = date_str.split('-')
+            time_str, _ = time_str.split('.')
+        
             _, value, _ = line.split(';')
             value = value.strip('"')
-            if value.startswith("Zeitraum:"):
-                # the end date is a timestamp that is coded into the name of the csv file
-                path = Path(filename)
+            date_pattern = r'\b\d{2}\.\d{2}\.\d{4}\b'
+            dates = re.findall(date_pattern, line)
+            print(dates)
+            
+            if len(dates) == 2:
 
-                # Extracting the filename
-                filename = path.name
-
+                # two strings. Extract start and end date of transactions in this file
+                #date_string = "01.06.2024"
+                date_format = "%d.%m.%Y"
+                date_objects = [datetime.strptime(date_str, date_format).date() for date_str in dates]
                 
-                _, _,date_str = filename.split('_')
-                date_str, time_str = date_str.split('-')
-                time_str, _ = time_str.split('.')
+                is_date_or_datetime = lambda x: isinstance(x, (date, datetime))
+                
+                return all(is_date_or_datetime(d) for d in dates)
+            
+                
+            elif value.startswith("Zeitraum:"):
+                # the end date is a timestamp that is coded into the name of the csv file
+                
+
+               
                 
                 year = int(date_str[:4])
                 month = int(date_str[4:6])
@@ -96,7 +116,8 @@ class ComdirectImporter(ImporterProtocol):
                 date_object = datetime(year, month, day, hour, minute)
                 
                 return date_object
-                
+
+            return None
         except ValueError:
             raise InvalidFormatError(f'Invalid metadata: {line}')
         
