@@ -4,6 +4,7 @@ from importers.comdirect import ComdirectImporter, NoNewBalanceException
 from textwrap import dedent
 from datetime import datetime
 
+
 IBAN = 'DE99 1234 1234 1234 1234 99'
 
 @pytest.fixture
@@ -67,3 +68,8 @@ def test_extract_end_date(tmp_file):
 
 
 
+def test_extract_end_date_from_content(tmp_file):
+    importer = ComdirectImporter('Assets:MyBank:Checking', IBAN)
+    date_end = importer.extract_end_date(str('"Umsätze Girokonto";"Zeitraum: 01.06.2024 - 09.06.2024";'), tmp_file.name)
+    date = datetime(2024, 9, 6, 0, 00)
+    assert date_end == date
