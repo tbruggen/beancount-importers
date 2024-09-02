@@ -54,7 +54,8 @@ class ComdirectImporter(ImporterProtocol):
             line_index += 1
             
             
-            self.date_start, self.date_end = self.extract_end_date(line, file.name)
+            self.date_start = self.extract_start_date(line, file.name)
+            self.date_end = self.extract_end_date(line, file.name)
 
             # metadate: new balance
             line_index += 1
@@ -73,8 +74,9 @@ class ComdirectImporter(ImporterProtocol):
 
     def file_account(self, file):
         return self.account
+    
 
-    def extract_end_date(self, line, filename):
+    def extract_dates(self, line, filename):
         try:
             
              # Extracting the date and timestamp of file upon creation by filename
@@ -91,31 +93,31 @@ class ComdirectImporter(ImporterProtocol):
             print(dates)
             
             if len(dates) == 2:
-
                 # two strings. Extract start and end date of transactions in this file
-                #date_string = "01.06.2024"
                 date_format = "%d.%m.%Y"
-                date_objects = [datetime.strptime(date_str, date_format).date() for date_str in dates]
-                
-                is_date_or_datetime = lambda x: isinstance(x, (date, datetime))
-                
-                return all(is_date_or_datetime(d) for d in dates)
-            
+                date_objects = [datetime.strptime(date_str, date_format).date() for date_str in dates]                
+                return (date_objects[0], date_objects[1])            
                 
             elif value.startswith("Zeitraum:"):
-                # the end date is a timestamp that is coded into the name of the csv file
-                
-
-               
-                
+                # the end date is a timestamp that is coded into the filename
                 year = int(date_str[:4])
                 month = int(date_str[4:6])
-                day = int(date_str[6:])                
-                hour = int(time_str[:2])
-                minute = int(time_str[2:])
-                date_object = datetime(year, month, day, hour, minute)
+                day = int(date_str[6:])     
+                end_date = datetime(year, month, day)
                 
-                return date_object
+                # The start date is x days before end date
+                match = re.search(r'(\d+)\s*Tage', value)
+                delta = 0
+                if match:
+                    delta = int(match.group(1))  # Extract the number and convert it to an integer                    
+                else:
+                    print("No match found")
+                    raise InvalidFormatError(f'Invalid metadata: {line}')
+
+                d = timedelta(days = delta) 
+                start_date = end_date - d
+
+                return (start_date, end_date)
 
             return None
         except ValueError:

@@ -2,7 +2,7 @@ import pytest
 
 from importers.comdirect import ComdirectImporter, NoNewBalanceException
 from textwrap import dedent
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 IBAN = 'DE99 1234 1234 1234 1234 99'
@@ -59,17 +59,21 @@ def test_new_balance_absent(tmp_file):
         
         
         
-def test_extract_end_date(tmp_file):
+def test_extract_dates(tmp_file):
     importer = ComdirectImporter('Assets:MyBank:Checking', IBAN)
-    date_end = importer.extract_end_date(str('"Umsätze Girokonto";"Zeitraum: 30 Tage";'), tmp_file.name)
-    date = datetime(2024, 5, 22, 14, 38)
-    assert date_end == date
+    [start, end] = importer.extract_dates(str('"Umsätze Girokonto";"Zeitraum: 30 Tage";'), tmp_file.name)
+    end_date = datetime(2024, 5, 22)
+    d = timedelta(days = 30)
+    start_date = end_date - d
+    assert start_date == start
+    assert end_date == end
 
 
 
 
-def test_extract_end_date_from_content(tmp_file):
+def test_extract_dates_from_content(tmp_file):
     importer = ComdirectImporter('Assets:MyBank:Checking', IBAN)
-    date_end = importer.extract_end_date(str('"Umsätze Girokonto";"Zeitraum: 01.06.2024 - 09.06.2024";'), tmp_file.name)
-    date = datetime(2024, 9, 6, 0, 00)
-    assert date_end == date
+    [start, end] = importer.extract_dates(str('"Umsätze Girokonto";"Zeitraum: 01.06.2024 - 09.06.2024";'), tmp_file.name)
+    end_date = datetime(2024, 6, 9).date()
+    assert end == end_date
+    start_date = datetime(2024, 6, 1).date()
