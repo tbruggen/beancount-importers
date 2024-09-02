@@ -1,8 +1,12 @@
 from beancount.ingest.importer import ImporterProtocol
+from beancount.core.amount import Amount
+from decimal import Decimal
 import warnings
 from datetime import datetime, date, timedelta
 from pathlib import Path
 import re
+import csv
+from beancount.core import data
 
 class NoNewBalanceException(Exception):
     """
@@ -29,6 +33,10 @@ class ComdirectImporter(ImporterProtocol):
 
         super().__init__()
 
+
+    def file_date(self, file):
+        return super().file_date(file)
+
     def identify(self, file):
         with open(file.name, encoding="ISO-8859-1") as fd:
             line = fd.readline().strip()
@@ -54,22 +62,61 @@ class ComdirectImporter(ImporterProtocol):
             line_index += 1
             
             
-            self.date_start = self.extract_start_date(line, file.name)
-            self.date_end = self.extract_end_date(line, file.name)
-
+            (self.date_start, self.end_date) = self.extract_dates(line, file.name)
+            
             # metadate: new balance
             line_index += 1
             line = fd.readline().strip()
            
 
-            if not line.startswith('"Neuer kontostand";'):
+            if not line.startswith('"Neuer Kontostand";'):
                 raise NoNewBalanceException('File does not have a new balance')                
                 
-    
-            balance_amount = None
-            balance_line_index = None
+            balance, currency = self.extract_balance(line)
+            balance_amount = Amount(Decimal(balance), currency)
+            balance_line_index = line_index
 
 
+            # parse transactions
+
+            line = fd.readline().strip()
+            if line:
+                raise InvalidFormatError(
+                'Empty line expected after header is not empty'
+                )
+            # data entries
+            reader = csv.DictReader(fd, delimiter=';', quoting=csv.QUOTE_MINIMAL, quotechar='"')
+            entries = []
+
+
+
+            for line in reader:
+                meta = data.new_metadata(file.name, line_index)
+                amount = Amount(Decimal(line['Amount (EUR)']), self.currency)
+                date = datetime.strptime(line['Date'], '%d.%m.%Y').date()
+                description = line['Transaction type']
+                postings = [
+                    data.Posting(
+                        self.account, amount, None, None, None, None
+                    )
+                ]
+                entries.append(
+                    data.Transaction(
+                        meta,
+                        date,
+                        self.FLAG,
+                        line['Payee'],
+                        description,
+                        data.EMPTY_SET,
+                        data.EMPTY_SET,
+                        postings,
+                    )
+                )
+                line_index += 1
+
+
+
+        return entries
 
 
     def file_account(self, file):
@@ -124,3 +171,13 @@ class ComdirectImporter(ImporterProtocol):
             raise InvalidFormatError(f'Invalid metadata: {line}')
         
         
+    def extract_balance(self, line):
+        #"Neuer Kontostand";"4.588,30 EUR";
+        _, balance, _ = line.split(';')
+        amount_str, currency = balance.split(' ')
+        currency = currency.replace('"','')
+        converted_number = amount_str.replace('.', '').replace(',', '.').replace('"','')
+
+        amount = float(converted_number)
+        return amount, currency
+
