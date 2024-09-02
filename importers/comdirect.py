@@ -92,9 +92,9 @@ class ComdirectImporter(ImporterProtocol):
 
             for line in reader:
                 meta = data.new_metadata(file.name, line_index)
-                amount = Amount(Decimal(line['Amount (EUR)']), self.currency)
-                date = datetime.strptime(line['Date'], '%d.%m.%Y').date()
-                description = line['Transaction type']
+                amount = Amount(Decimal(line['Umsatz in EUR'].replace(',', '.')), self.currency)
+                date = datetime.strptime(line['Buchungstag'], '%d.%m.%Y').date()
+                description = line['Buchungstext']
                 postings = [
                     data.Posting(
                         self.account, amount, None, None, None, None
@@ -105,7 +105,7 @@ class ComdirectImporter(ImporterProtocol):
                         meta,
                         date,
                         self.FLAG,
-                        line['Payee'],
+                        None,
                         description,
                         data.EMPTY_SET,
                         data.EMPTY_SET,
@@ -178,6 +178,6 @@ class ComdirectImporter(ImporterProtocol):
         currency = currency.replace('"','')
         converted_number = amount_str.replace('.', '').replace(',', '.').replace('"','')
 
-        amount = float(converted_number)
+        amount = float(converted_number) # maybe don convert to float as it is later put into a Decimal.
         return amount, currency
 
