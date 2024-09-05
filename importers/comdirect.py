@@ -23,6 +23,18 @@ class NoValidEndDateError(Exception):
     Raised in case the CSV file format isn't as expected.
     """
 
+
+
+def parse_date(date_str):
+    if date_str.lower() == "offen":
+        return None  # You can return None or any other placeholder for unknown dates
+    try:
+        # Parse the date in the expected format "dd.mm.yyyy"
+        return datetime.strptime(date_str, "%d.%m.%Y").date()
+    except ValueError:
+        # Handle cases where the format is unexpected or invalid
+        return None
+
 class ComdirectImporter(ImporterProtocol):
     def __init__(self, account, iban, currency='EUR'):
         self.account = account
@@ -46,6 +58,7 @@ class ComdirectImporter(ImporterProtocol):
             return line == ';' and  line2.startswith("\"Umsätze Girokonto\";") 
         
     
+
     def extract(self, file):
         if not self.identify(file):
             warnings.warn(f'{file.name} is not compatible with ComdirectImporter')
@@ -64,10 +77,9 @@ class ComdirectImporter(ImporterProtocol):
             
             (self.date_start, self.end_date) = self.extract_dates(line, file.name)
             
-            # metadate: new balance
-            line_index += 1
+            # metadate: new balance            
             line = fd.readline().strip()
-           
+            line_index += 1
 
             if not line.startswith('"Neuer Kontostand";'):
                 raise NoNewBalanceException('File does not have a new balance')                
@@ -80,20 +92,33 @@ class ComdirectImporter(ImporterProtocol):
             # parse transactions
 
             line = fd.readline().strip()
+            line_index += 1
+
             if line:
                 raise InvalidFormatError(
                 'Empty line expected after header is not empty'
                 )
             # data entries
             reader = csv.DictReader(fd, delimiter=';', quoting=csv.QUOTE_MINIMAL, quotechar='"')
+            line_index +=1
             entries = []
 
 
-
             for line in reader:
+                line_index += 1
                 meta = data.new_metadata(file.name, line_index)
-                amount = Amount(Decimal(line['Umsatz in EUR'].replace(',', '.')), self.currency)
-                date = datetime.strptime(line['Buchungstag'], '%d.%m.%Y').date()
+                amount_str = line['Umsatz in EUR'].replace('.', '') # remove the '1000 dots'
+                amount_str = amount_str.replace(',', '.') # decimal comma to decimal point.
+                amount = Amount(Decimal(amount_str), self.currency)
+                
+                date_str = line['Buchungstag'] 
+                parsed_date = parse_date(date_str)
+
+                if parsed_date is None:
+                    continue
+                else:                    
+                    date = parsed_date
+
                 description = line['Buchungstext']
                 postings = [
                     data.Posting(
@@ -114,9 +139,11 @@ class ComdirectImporter(ImporterProtocol):
                 )
                 line_index += 1
 
+            return entries
 
 
-        return entries
+
+    
 
 
     def file_account(self, file):
