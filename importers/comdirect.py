@@ -114,7 +114,10 @@ class ComdirectImporter(ImporterProtocol):
                 # containing all the transactions
                 if row['Buchungstag'] == 'Alter Kontostand':
                     old_balance_str = row['Wertstellung (Valuta)']
-                    old_balance = Amount(Decimal(old_balance), currency)                    
+                    old_balance_str = old_balance_str.replace('.', '')
+                    old_balance_str = old_balance_str.replace(',', '.')
+                    amount_str, currency = old_balance_str.split(' ')
+                    old_balance = Amount(Decimal(amount_str), currency)                    
                     break
 
                 meta = data.new_metadata(file.name, line_index)
