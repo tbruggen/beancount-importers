@@ -104,14 +104,25 @@ class ComdirectImporter(ImporterProtocol):
             entries = []
 
 
-            for line in reader:
+            for row in reader:
                 line_index += 1
+               
+                # Todo: This way of getting the balance at the beginning of the period is ugly
+                # The data got caught up in the dictionary and the labels dont make sense
+                # maybe I have to pass two times through the file. One time reading all 
+                # metadata and the second time to use only part of the file for the dict
+                # containing all the transactions
+                if row['Buchungstag'] == 'Alter Kontostand':
+                    old_balance_str = row['Wertstellung (Valuta)']
+                    old_balance = Amount(Decimal(old_balance), currency)                    
+                    break
+
                 meta = data.new_metadata(file.name, line_index)
-                amount_str = line['Umsatz in EUR'].replace('.', '') # remove the '1000 dots'
+                amount_str = row['Umsatz in EUR'].replace('.', '') # remove the '1000 dots'
                 amount_str = amount_str.replace(',', '.') # decimal comma to decimal point.
                 amount = Amount(Decimal(amount_str), self.currency)
                 
-                date_str = line['Buchungstag'] 
+                date_str = row['Buchungstag'] 
                 parsed_date = parse_date(date_str)
 
                 if parsed_date is None:
@@ -119,7 +130,7 @@ class ComdirectImporter(ImporterProtocol):
                 else:                    
                     date = parsed_date
 
-                description = line['Buchungstext']
+                description = row['Buchungstext']
                 postings = [
                     data.Posting(
                         self.account, amount, None, None, None, None
@@ -139,11 +150,16 @@ class ComdirectImporter(ImporterProtocol):
                 )
                 line_index += 1
 
+
+
+            
+
             return entries
 
 
 
-    
+        
+
 
 
     def file_account(self, file):
