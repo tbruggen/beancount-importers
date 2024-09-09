@@ -75,7 +75,7 @@ class ComdirectImporter(ImporterProtocol):
             line_index += 1
             
             
-            (self.date_start, self.end_date) = self.extract_dates(line, file.name)
+            (self.date_start, self.date_end) = self.extract_dates(line, file.name)
             
             # metadate: new balance            
             line = fd.readline().strip()
@@ -154,8 +154,18 @@ class ComdirectImporter(ImporterProtocol):
                 line_index += 1
 
 
-
-            
+            # Add balance on end date
+            meta = data.new_metadata(fd.name, balance_line_index)
+            entries.append(
+                data.Balance(
+                    meta,
+                    self.date_end + timedelta(days=1),
+                    self.account,
+                    balance_amount,
+                    None,
+                    None,
+                )
+            )
 
             return entries
 
@@ -196,7 +206,7 @@ class ComdirectImporter(ImporterProtocol):
                 year = int(date_str[:4])
                 month = int(date_str[4:6])
                 day = int(date_str[6:])     
-                end_date = datetime(year, month, day)
+                end_date = datetime(year, month, day).date()
                 
                 # The start date is x days before end date
                 match = re.search(r'(\d+)\s*Tage', value)
@@ -224,6 +234,6 @@ class ComdirectImporter(ImporterProtocol):
         currency = currency.replace('"','')
         converted_number = amount_str.replace('.', '').replace(',', '.').replace('"','')
 
-        amount = float(converted_number) # maybe don convert to float as it is later put into a Decimal.
+        amount = Decimal(converted_number) # maybe don convert to float as it is later put into a Decimal.
         return amount, currency
 
