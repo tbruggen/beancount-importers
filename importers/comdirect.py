@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import csv
 from beancount.core import data
+import os.path
 
 class NoNewBalanceException(Exception):
     """
@@ -45,9 +46,19 @@ class ComdirectImporter(ImporterProtocol):
 
         super().__init__()
 
+    def file_account(self, file):
+        return self.account
 
     def file_date(self, file):
         return super().file_date(file)
+
+    def file_date(self, file):
+        self.extract(file)
+        return self.date_end
+    
+    def file_name(self, file):
+        _, extension = os.path.splitext(os.path.basename(file.name))
+        return f'comdirect{extension}'
 
     def identify(self, file):
         with open(file.name, encoding="ISO-8859-1") as fd:
