@@ -1,6 +1,7 @@
 venv/
 umsaetze*
-thomas.beancount
+*.beancount
 .vscode/
 tests/__pycache__/
 importers/__pycache__/
+*.csv
