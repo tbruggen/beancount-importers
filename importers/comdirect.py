@@ -61,12 +61,19 @@ class ComdirectImporter(ImporterProtocol):
         return f'comdirect{extension}'
 
     def identify(self, file):
+        """
+        Identify if the given file is compatible with the ComdirectImporter.
+
+        Args:
+            file: A file-like object to be checked.
+
+        Returns:
+            bool: True if the file is compatible, False otherwise.
+        """
         with open(file.name, encoding="ISO-8859-1") as fd:
             line = fd.readline().strip()
-            line2 = fd.readline().strip()
-            print(line)
-            print(line2)        
-            return line == ';' and  line2.startswith("\"Umsätze Girokonto\";") 
+            line2 = fd.readline().strip()                 
+            return line == ';' and line2.startswith("\"Umsätze Girokonto\";") 
         
     
 
@@ -182,10 +189,7 @@ class ComdirectImporter(ImporterProtocol):
 
 
 
-        
-
-
-
+    
     def file_account(self, file):
         return self.account
     
@@ -203,8 +207,7 @@ class ComdirectImporter(ImporterProtocol):
             _, value, _ = line.split(';')
             value = value.strip('"')
             date_pattern = r'\b\d{2}\.\d{2}\.\d{4}\b'
-            dates = re.findall(date_pattern, line)
-            print(dates)
+            dates = re.findall(date_pattern, line)            
             
             if len(dates) == 2:
                 # two strings. Extract start and end date of transactions in this file
@@ -225,8 +228,7 @@ class ComdirectImporter(ImporterProtocol):
                 if match:
                     delta = int(match.group(1))  # Extract the number and convert it to an integer                    
                 else:
-                    print("No match found")
-                    raise InvalidFormatError(f'Invalid metadata: {line}')
+                    raise InvalidFormatError(f'Invalid metadata: start and end dates could not be determined. {line}')
 
                 d = timedelta(days = delta) 
                 start_date = end_date - d
@@ -248,3 +250,5 @@ class ComdirectImporter(ImporterProtocol):
         amount = Decimal(converted_number) # maybe don convert to float as it is later put into a Decimal.
         return amount, currency
 
+
+    
