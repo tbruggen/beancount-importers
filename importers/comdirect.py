@@ -37,7 +37,8 @@ def parse_date(date_str):
         return None
 
 class ComdirectImporter(ImporterProtocol):
-    def __init__(self, account, iban, currency='EUR'):
+    def __init__(self, account, iban, account_nr, currency='EUR'):
+        self.account_nr = account_nr
         self.account = account
         self.iban = iban
         self.currency = currency
@@ -70,6 +71,9 @@ class ComdirectImporter(ImporterProtocol):
         Returns:
             bool: True if the file is compatible, False otherwise.
         """
+        if self.account_nr not in file.name:
+            return False
+
         with open(file.name, encoding="ISO-8859-1") as fd:
             line = fd.readline().strip()
             line2 = fd.readline().strip()                 
