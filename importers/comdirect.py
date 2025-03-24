@@ -178,6 +178,11 @@ class ComdirectImporter(ImporterProtocol):
 
             # Add balance on end date
             meta = data.new_metadata(fd.name, balance_line_index)
+
+            """From the book Tracking Personal Finances using Python: The difference is subtle but extremely important. Essentially, the CSV tells us that the balance of our
+            account at the end of dd.mm.yyyy was x EUR. Beancount, on the other hand, expects dates to
+            correspond to the beginning of the day. To account for this difference, we add a timedelta of 1 day
+            to date_end when instantiating data.Balance so that the balances will add up."""
             entries.append(
                 data.Balance(
                     meta,
@@ -200,48 +205,45 @@ class ComdirectImporter(ImporterProtocol):
 
     def extract_dates(self, line, filename):
         try:
-            
-             # Extracting the date and timestamp of file upon creation by filename
-            path = Path(filename)
-            filename = path.name                      
-            _, _,date_str = filename.split('_')
-            date_str, time_str = date_str.split('-')
-            time_str, _ = time_str.split('.')
-        
-            _, value, _ = line.split(';')
-            value = value.strip('"')
-            date_pattern = r'\b\d{2}\.\d{2}\.\d{4}\b'
-            dates = re.findall(date_pattern, line)            
-            
+            # Extract date and time from the filename
+            end_date = self._extract_date_from_filename(filename)
+
+            # Extract dates from the line
+            dates = self._extract_dates_from_line(line)
+
             if len(dates) == 2:
-                # two strings. Extract start and end date of transactions in this file
-                date_format = "%d.%m.%Y"
-                date_objects = [datetime.strptime(date_str, date_format).date() for date_str in dates]                
-                return (date_objects[0], date_objects[1])            
-                
-            elif value.startswith("Zeitraum:"):
-                # the end date is a timestamp that is coded into the filename
-                year = int(date_str[:4])
-                month = int(date_str[4:6])
-                day = int(date_str[6:])     
-                end_date = datetime(year, month, day).date()
-                
-                # The start date is x days before end date
-                match = re.search(r'(\d+)\s*Tage', value)
-                delta = 0
-                if match:
-                    delta = int(match.group(1))  # Extract the number and convert it to an integer                    
-                else:
-                    raise InvalidFormatError(f'Invalid metadata: start and end dates could not be determined. {line}')
-
-                d = timedelta(days = delta) 
-                start_date = end_date - d
-
-                return (start_date, end_date)
-
-            return None
+                return dates[0], dates[1]
+            elif "Zeitraum:" in line:
+                start_date = self._calculate_start_date(line, end_date)
+                return start_date, end_date
+            else:
+                raise InvalidFormatError(f'Invalid metadata: start and end dates could not be determined. {line}')
         except ValueError:
             raise InvalidFormatError(f'Invalid metadata: {line}')
+
+    def _extract_date_from_filename(self, filename):
+        path = Path(filename)
+        filename = path.name
+        _, _, date_str = filename.split('_')
+        date_str, _ = date_str.split('-')
+        year = int(date_str[:4])
+        month = int(date_str[4:6])
+        day = int(date_str[6:])
+        return datetime(year, month, day).date()
+
+    def _extract_dates_from_line(self, line):
+        date_pattern = r'\b\d{2}\.\d{2}\.\d{4}\b'
+        date_strings = re.findall(date_pattern, line)
+        date_format = "%d.%m.%Y"
+        return [datetime.strptime(date_str, date_format).date() for date_str in date_strings]
+
+    def _calculate_start_date(self, line, end_date):
+        match = re.search(r'(\d+)\s*Tage', line)
+        if match:
+            delta_days = int(match.group(1))
+            return end_date - timedelta(days=delta_days)
+        else:
+            raise InvalidFormatError(f'Invalid metadata: start date could not be determined. {line}')
         
         
     def extract_balance(self, line):
@@ -255,4 +257,4 @@ class ComdirectImporter(ImporterProtocol):
         return amount, currency
 
 
-    
+
