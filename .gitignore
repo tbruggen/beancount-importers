@@ -7,3 +7,4 @@ importers/__pycache__/
 *.csv
 *.qodo
 .qodo
+config.py
