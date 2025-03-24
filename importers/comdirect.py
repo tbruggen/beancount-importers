@@ -85,120 +85,82 @@ class ComdirectImporter(ImporterProtocol):
         if not self.identify(file):
             warnings.warn(f'{file.name} is not compatible with ComdirectImporter')
             return []
-        
-        line_index = -1
+
         with open(file.name, encoding="ISO-8859-1") as fd:
-            line = fd.readline().strip()
-            line_index += 1
-            
-            
-            # metadata: end date
-            line = fd.readline().strip()
-            line_index += 1
-            
-            
-            (self.date_start, self.date_end) = self.extract_dates(line, file.name)
-            
-            # metadate: new balance            
-            line = fd.readline().strip()
-            line_index += 1
+            lines = fd.readlines()
 
-            if not line.startswith('"Neuer Kontostand";'):
-                raise NoNewBalanceException('File does not have a new balance')                
-                
-            balance, currency = self.extract_balance(line)
-            balance_amount = Amount(Decimal(balance), currency)
-            balance_line_index = line_index
+        self.date_start, self.date_end = self.extract_dates(lines[1], file.name)
 
+        if not lines[2].startswith('"Neuer Kontostand";'):
+            raise NoNewBalanceException('File does not have a new balance')
 
-            # parse transactions
+        balance, currency = self.extract_balance(lines[2])
+        balance_amount = Amount(Decimal(balance), currency)
+        balance_line_index = 2
 
-            line = fd.readline().strip()
-            line_index += 1
+        if lines[3].strip():
+            raise InvalidFormatError('Empty line expected after header is not empty')
 
-            if line:
-                raise InvalidFormatError(
-                'Empty line expected after header is not empty'
+        entries = self.parse_transactions(lines[4:], file.name)
+
+        # Add balance on end date
+        meta = data.new_metadata(file.name, balance_line_index)
+        entries.append(
+            data.Balance(
+                meta,
+                self.date_end + timedelta(days=1),
+                self.account,
+                balance_amount,
+                None,
+                None,
+            )
+        )
+
+        return entries
+
+    def parse_transactions(self, lines, filename):
+        entries = []
+        reader = csv.DictReader(lines, delimiter=';', quoting=csv.QUOTE_MINIMAL, quotechar='"')
+
+        for line_index, row in enumerate(reader, start=5):
+            if row['Buchungstag'] == 'Alter Kontostand':
+                old_balance_str = row['Wertstellung (Valuta)']
+                old_balance_str = old_balance_str.replace('.', '').replace(',', '.')
+                amount_str, currency = old_balance_str.split(' ')
+                old_balance = Amount(Decimal(amount_str), currency)
+                break
+
+            meta = data.new_metadata(filename, line_index)
+            amount_str = row['Umsatz in EUR'].replace('.', '').replace(',', '.')
+            amount = Amount(Decimal(amount_str), self.currency)
+
+            date_str = row['Buchungstag']
+            parsed_date = parse_date(date_str)
+
+            if parsed_date is None:
+                continue
+
+            description = row['Buchungstext']
+            postings = [
+                data.Posting(
+                    self.account, amount, None, None, None, None
                 )
-            # data entries
-            reader = csv.DictReader(fd, delimiter=';', quoting=csv.QUOTE_MINIMAL, quotechar='"')
-            line_index +=1
-            entries = []
-
-
-            for row in reader:
-                line_index += 1
-               
-                # Todo: This way of getting the balance at the beginning of the period is ugly
-                # The data got caught up in the dictionary and the labels dont make sense
-                # maybe I have to pass two times through the file. One time reading all 
-                # metadata and the second time to use only part of the file for the dict
-                # containing all the transactions
-                if row['Buchungstag'] == 'Alter Kontostand':
-                    old_balance_str = row['Wertstellung (Valuta)']
-                    old_balance_str = old_balance_str.replace('.', '')
-                    old_balance_str = old_balance_str.replace(',', '.')
-                    amount_str, currency = old_balance_str.split(' ')
-                    old_balance = Amount(Decimal(amount_str), currency)                    
-                    break
-
-                meta = data.new_metadata(file.name, line_index)
-                amount_str = row['Umsatz in EUR'].replace('.', '') # remove the '1000 dots'
-                amount_str = amount_str.replace(',', '.') # decimal comma to decimal point.
-                amount = Amount(Decimal(amount_str), self.currency)
-                
-                date_str = row['Buchungstag'] 
-                parsed_date = parse_date(date_str)
-
-                if parsed_date is None:
-                    continue
-                else:                    
-                    date = parsed_date
-
-                description = row['Buchungstext']
-                postings = [
-                    data.Posting(
-                        self.account, amount, None, None, None, None
-                    )
-                ]
-                entries.append(
-                    data.Transaction(
-                        meta,
-                        date,
-                        self.FLAG,
-                        None,
-                        description,
-                        data.EMPTY_SET,
-                        data.EMPTY_SET,
-                        postings,
-                    )
-                )
-                line_index += 1
-
-
-            # Add balance on end date
-            meta = data.new_metadata(fd.name, balance_line_index)
-
-            """From the book Tracking Personal Finances using Python: The difference is subtle but extremely important. Essentially, the CSV tells us that the balance of our
-            account at the end of dd.mm.yyyy was x EUR. Beancount, on the other hand, expects dates to
-            correspond to the beginning of the day. To account for this difference, we add a timedelta of 1 day
-            to date_end when instantiating data.Balance so that the balances will add up."""
+            ]
             entries.append(
-                data.Balance(
+                data.Transaction(
                     meta,
-                    self.date_end + timedelta(days=1),
-                    self.account,
-                    balance_amount,
+                    parsed_date,
+                    self.FLAG,
                     None,
-                    None,
+                    description,
+                    data.EMPTY_SET,
+                    data.EMPTY_SET,
+                    postings,
                 )
             )
 
-            return entries
+        return entries
 
-
-
-    
     def file_account(self, file):
         return self.account
     
