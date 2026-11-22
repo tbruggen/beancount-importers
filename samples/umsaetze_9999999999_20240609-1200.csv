@@ -1,0 +1,10 @@
+;
+"Umsätze Girokonto";"Zeitraum: 01.06.2024 - 09.06.2024";
+"Neuer Kontostand";"4.588,30 EUR";
+
+"Buchungstag";"Wertstellung (Valuta)";"Buchungstext";"Verwendungszweck";"Umsatz in EUR";
+"01.06.2024";"01.06.2024";"REWE SAGT DANKE";"LEbensmittel";"-52,30";
+"03.06.2024";"03.06.2024";"ACME GMBH";"GEHALT JUNI 2024";"2.500,00";
+"05.06.2024";"07.06.2024";"TELEKOM DEUTSCHLAND";"RECHNUNG JUNI 2024";"-59,99";
+"07.06.2024";"07.06.2024";"ARD ZDF DEUTSCHLANDRADIO";"RUNDFUNKBEITRAG Q2";"-18,36";
+"Alter Kontostand";"2.218,95 EUR";"";"";"";

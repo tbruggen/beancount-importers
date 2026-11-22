@@ -1,0 +1,27 @@
+"""
+Example Beancount importer configuration.
+
+Copy this file to config.py and fill in your own values:
+
+    cp config.py.example config.py
+
+config.py is gitignored because it contains personal data (IBAN, account
+number). Use the fake sample files in samples/ for development — they use
+the account number 9999999999:
+
+    bean-extract config.py samples/umsaetze_9999999999_20240901-1606.csv
+"""
+
+import sys
+
+sys.path.append('.')
+
+from importers.comdirect import ComdirectImporter
+
+CONFIG = [
+    ComdirectImporter(
+        account='Assets:MyBank:Checking',       # your Beancount account
+        iban='DE99 1234 1234 1234 1234 99',     # your IBAN (fake one is fine for samples)
+        account_nr='9999999999',                # Comdirect account number; must appear in the CSV filename
+    )
+]

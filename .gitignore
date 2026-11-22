@@ -5,6 +5,8 @@ umsaetze*
 tests/__pycache__/
 importers/__pycache__/
 *.csv
+!samples/
+!samples/*.csv
 *.qodo
 .qodo
 config.py

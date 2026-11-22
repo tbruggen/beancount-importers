@@ -1,6 +1,15 @@
 to use:
 - create virtual environment using venv
 
+SAMPLE DATA (no real bank data needed)
+- fake Comdirect CSV exports live in samples/ (account number 9999999999)
+- they are committed to git (see .gitignore exceptions for samples/)
+- try the importer on them:
+    cp config.py.example config.py
+    bean-extract config.py samples/umsaetze_9999999999_20240901-1606.csv
+- run the integration tests against the samples:
+    pytest tests/test_sample_data.py
+
 
 DEBUGGING
 to debug, create a launch.json with the following configuration:
