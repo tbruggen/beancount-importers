@@ -1,0 +1,12 @@
+;
+"Umsätze Girokonto";"Zeitraum: 30 Tage";
+"Neuer Kontostand";"7.715,11 EUR";
+
+"Buchungstag";"Wertstellung (Valuta)";"Buchungstext";"Verwendungszweck";"Umsatz in EUR";
+"02.08.2024";"02.08.2024";"REWE SAGT DANKE";"LEbensmittel Wocheneinkauf";"-45,90";
+"03.08.2024";"05.08.2024";"ACME GMBH";"GEHALT AUGUST 2024";"2.500,00";
+"05.08.2024";"05.08.2024";"MVV GMBH";"MONATSKARTE ABO";"-49,00";
+"10.08.2024";"12.08.2024";"AMAZON EU S.A R.L.";"BESTELLUNG 112-3344556-7788990";"-89,99";
+"15.08.2024";"15.08.2024";"STADTWERKE MÜNCHEN";"STROM ABSCHLAG Q3";"-100,00";
+"20.08.2024";"20.08.2024";"SPARKASSE MÜNCHEN";"ÜBERWEISUNG EINZAHLUNG";"500,00";
+"Alter Kontostand";"5.000,00 EUR";"";"";"";
